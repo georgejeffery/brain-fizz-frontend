@@ -1,178 +1,199 @@
 import React, { Component } from "react";
-import {
-  Box,
-  Button,
-  Heading,
-  Collapsible,
-  ResponsiveContext,
-  Layer,
-  Calendar,
-  Grid,
-  Grommet,
-  Select,
-  Form,
-  TextArea
-} from "grommet";
-import { ImageStamp, Tags, DateInput, DropInput } from "grommet-controls";
-import { Notification, FormClose } from "grommet-icons";
+import { ResponsiveContext, Grid, Grommet } from "grommet";
+import { Route, withRouter, Redirect } from "react-router-dom";
+import API from "./API";
+import AppBar from "./components/AppBar";
+import MainPage from "./components/MainPage";
+import SideBar from "./components/SideBar";
+import Login from "./components/Login";
+import Register from "./components/Register";
 
 const theme = {
   global: {
     colors: {
-      brand: "#8d22e6"
+      brand: "#e87502"
     },
     font: {
-      family: "Roboto",
+      family: "Quicksand",
       size: "14px",
       height: "20px"
     }
   }
 };
 
-const AppBar = props => (
-  <Box
-    gridArea="header"
-    tag="header"
-    direction="row"
-    align="center"
-    justify="between"
-    background="white"
-    pad={{ left: "medium", right: "small", vertical: "small" }}
-    elevation="medium"
-    style={{ zIndex: "1" }}
-    {...props}
-  />
-);
-
 class App extends Component {
   state = {
-    showSidebar: false
+    user: "",
+    user_notes: [],
+    failedRegister: false,
+    failedLogin: false,
+    tags: [],
+    selectedDate: new Date().toDateString()
   };
+
+  addUsertoState = userId => {
+    API.getUser(userId)
+      .then(user => this.setState({ user: user }))
+      .then(() => {
+        API.getUserNotes(userId).then(notes =>
+          this.setState({ user_notes: notes })
+        );
+      });
+    API.getTags().then(tags => this.setState({ tags: tags }));
+  };
+
+  logoutUser = () => {
+    this.setState({ user: "" });
+    this.props.history.push("/");
+  };
+
+  submit = user => {
+    if (user.name) {
+      API.createUser(user).then(resp =>
+        this.setState({ user: resp }, () => {
+          this.props.history.push("/main");
+        })
+      );
+      API.getTags().then(tags => this.setState({ tags: tags }));
+    } else {
+      this.setState({ failedRegister: true });
+    }
+    //this.addUsertoState(user.id);
+  };
+
+  login = user => {
+    API.authorise(user)
+      .then(resp => API.getUser(resp))
+      .then(user => {
+        if (user.name) {
+          this.setState({ user }, () => {
+            this.props.history.push("/main");
+            API.getUserNotes(this.state.user.id).then(notes =>
+              this.setState({ user_notes: notes })
+            );
+            API.getTags().then(tags => this.setState({ tags: tags }));
+          });
+        } else {
+          this.setState({ failedLogin: true });
+        }
+      });
+  };
+
+  selectDate = date => {
+    this.setState({ selectedDate: new Date(date).toDateString() });
+  };
+
+  dateCheck = (date1, date2) => {
+    let d1 = new Date(date1).toDateString();
+    let d2 = new Date(date2).toDateString();
+    if (d1 === d2) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  filterNotes = date => {
+    let a = [];
+    if (date !== new Date().toDateString()) {
+      a = this.state.user_notes.filter(note => {
+        return this.dateCheck(note.created_at, date);
+      });
+    } else {
+      a = this.state.user_notes;
+    }
+    return a;
+  };
+
+  // componentDidMount = () => {
+  //   this.addUsertoState(this.state.user.id);
+  // };
+
+  createNote = note => {
+    API.createNote(note).then(() =>
+      API.getUserNotes(this.state.user.id).then(notes =>
+        this.setState({ user_notes: notes })
+      )
+    );
+  };
+
+  deleteNote = note => {
+    API.deleteNote(note).then(() =>
+      API.getUserNotes(this.state.user.id).then(notes =>
+        this.setState({ user_notes: notes })
+      )
+    );
+  };
+
   render() {
-    const { showSidebar } = this.state;
+    const filteredNotes = this.filterNotes(this.state.selectedDate);
     return (
       <Grommet theme={theme} full>
         <ResponsiveContext.Consumer>
           {size => (
-            <Grid
-              fill
-              rows={["xsmall", "flex"]}
-              columns={["flex", "medium"]}
-              gap="xsmall"
-              areas={[
-                { name: "header", start: [0, 0], end: [1, 0] },
-                { name: "main", start: [0, 1], end: [0, 1] },
-                { name: "leftbox", start: [1, 1], end: [1, 1] }
-              ]}
-            >
-              <AppBar>
-                <Heading level="1" margin="none">
-                  Brain Fizz
-                </Heading>
-                <ImageStamp
-                  src="https://v2.grommet.io/assets/Wilderpeople_Ricky.jpg"
-                  round="full"
-                  size="medium"
-                />
-              </AppBar>
-              <Box
-                gridArea="main"
-                background="light-5"
-                fill
-                //align="center"
-                //justify="center"
-                background={{
-                  image: "url(/images/07.png)",
-                  size: "contain"
-                }}
-              >
-                <Box
-                  direction="row"
-                  justify="between"
-                  margin={{ left: "medium", right: "medium" }}
-                >
-                  <Heading level="2" alignSelf="center">
-                    All Your Notes
-                  </Heading>
-                  <Select
-                    options={["Appointment", "Daily Task"]}
-                    value={"Filter"}
-                    background="#FFFFFF"
-                    size="medium"
-                    align="right"
-                    alignSelf="center"
-                    style={{ background: "#FFFFFF" }}
+            <React.Fragment>
+              <Route
+                exact
+                path="/main"
+                component={() =>
+                  this.state.user ? (
+                    <React.Fragment>
+                      <Grid
+                        fill
+                        rows={["xsmall", "flex"]}
+                        columns={["flex", "medium"]}
+                        gap="xsmall"
+                        areas={[
+                          { name: "header", start: [0, 0], end: [1, 0] },
+                          { name: "main", start: [0, 1], end: [0, 1] },
+                          { name: "leftbox", start: [1, 1], end: [1, 1] }
+                        ]}
+                      >
+                        <AppBar
+                          username={this.state.user.name}
+                          logout={this.logoutUser}
+                        />
+                        <MainPage
+                          notes={filteredNotes}
+                          tags={this.state.tags}
+                          deleteNote={this.deleteNote}
+                        />
+                        <SideBar
+                          chooseDate={this.selectDate}
+                          currentDate={this.state.selectedDate}
+                          tags={this.state.tags}
+                          createNote={this.createNote}
+                          userID={this.state.user.id}
+                        />
+                      </Grid>
+                    </React.Fragment>
+                  ) : (
+                    <Redirect to="/" />
+                  )
+                }
+              />
+
+              <Route
+                exact
+                path="/"
+                component={() => (
+                  <Login
+                    login={this.login}
+                    loginState={this.state.failedLogin}
                   />
-                </Box>
-                <Box
-                  fill
-                  margin={{ left: "medium", right: "medium" }}
-                  background={{
-                    color: "#FFFFFF",
-                    opacity: "50%"
-                  }}
-                  align="center"
-                >
-                  <Box>Note Content</Box>
-                  <Box>Note Content</Box>
-                  <Box>Note Content</Box>
-                  <Box>Note Content</Box>
-                  <Box>Note Content</Box>
-                  <Box>Note Content</Box>
-                </Box>
-              </Box>
-              <Box
-                gridArea="leftbox"
-                background="light-1"
-                fill
-                align="center"
-                //justify="center"
-              >
-                <Calendar
-                  size="small"
-                  background={{ opacity: false }}
-                  margin={{ top: "small", bottom: "small" }}
-                />
-                <Box
-                  background={{
-                    color: "#FFFFFF",
-                    opacity: "50%"
-                  }}
-                  pad="small"
-                >
-                  <Form align="center" size="medium">
-                    <Heading
-                      level="4"
-                      margin={{ top: "small", bottom: "small" }}
-                    >
-                      Add a new note
-                    </Heading>
-                    <TextArea
-                      placeholder="Things get typed here"
-                      onChange={event => {
-                        /* event.target.value */
-                      }}
-                    />
-                    <Tags placeholder="No Tags Chosen Yet!" />
-                    <DropInput
-                      style={{ "margin-bottom": "10px" }}
-                      placeholder="Choose a tag"
-                    />
-                    <DateInput
-                      style={{ "margin-bottom": "10px" }}
-                      placeholder="DD/MM/YYYY"
-                      alignSelf="center"
-                    />
-                    <Button
-                      type="submit"
-                      primary
-                      label="Submit"
-                      alignSelf="center"
-                    />
-                  </Form>
-                </Box>
-              </Box>
-            </Grid>
+                )}
+              />
+              <Route
+                exact
+                path="/register"
+                component={() => (
+                  <Register
+                    submit={this.submit}
+                    registerState={this.state.failedRegister}
+                  />
+                )}
+              />
+            </React.Fragment>
           )}
         </ResponsiveContext.Consumer>
       </Grommet>
@@ -180,4 +201,4 @@ class App extends Component {
   }
 }
 
-export default App;
+export default withRouter(App);
