@@ -1,6 +1,11 @@
 URL = "http://localhost:3000/api/v1/";
 
 export default class API {
+  static handleErrors(response) {
+    if (!response.ok) {
+    }
+    return response;
+  }
   static get(endpoint) {
     return fetch(URL + endpoint).then(resp => resp.json());
   }
@@ -66,5 +71,9 @@ export default class API {
 
   static getTags() {
     return fetch(URL + "tags").then(resp => resp.json());
+  }
+
+  static getMonthTone(id) {
+    return fetch(URL + `monthtone/?id=${id}`).then(resp => resp.json());
   }
 }

@@ -28,7 +28,8 @@ class App extends Component {
     failedRegister: false,
     failedLogin: false,
     tags: [],
-    selectedDate: new Date().toDateString()
+    selectedDate: new Date().toDateString(),
+    monthTone: []
   };
 
   addUsertoState = userId => {
@@ -45,19 +46,21 @@ class App extends Component {
   logoutUser = () => {
     this.setState({ user: "" });
     this.props.history.push("/");
+    localStorage.removeItem("token");
   };
 
   submit = user => {
-    if (user.name) {
-      API.createUser(user).then(resp =>
+    API.createUser(user).then(resp => {
+      if (!resp.error) {
+        API.getTags().then(tags => this.setState({ tags: tags }));
         this.setState({ user: resp }, () => {
           this.props.history.push("/main");
-        })
-      );
-      API.getTags().then(tags => this.setState({ tags: tags }));
-    } else {
-      this.setState({ failedRegister: true });
-    }
+        });
+      } else {
+        this.setState({ failedRegister: true });
+      }
+    });
+
     //this.addUsertoState(user.id);
   };
 
@@ -70,6 +73,9 @@ class App extends Component {
             this.props.history.push("/main");
             API.getUserNotes(this.state.user.id).then(notes =>
               this.setState({ user_notes: notes })
+            );
+            API.getMonthTone(this.state.user.id).then(tone =>
+              this.setState({ monthTone: tone })
             );
             API.getTags().then(tags => this.setState({ tags: tags }));
           });
@@ -157,6 +163,7 @@ class App extends Component {
                           notes={filteredNotes}
                           tags={this.state.tags}
                           deleteNote={this.deleteNote}
+                          monthTone={this.state.monthTone}
                         />
                         <SideBar
                           chooseDate={this.selectDate}

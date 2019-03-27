@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Heading, Select } from "grommet";
 import NoteContainer from "./NoteContainer";
+import ToneBox from "./ToneBox";
 
 export default class MainPage extends React.Component {
   constructor(props) {
@@ -24,6 +25,8 @@ export default class MainPage extends React.Component {
   };
 
   render() {
+    let monthTone = this.props.monthTone.map(tone => <ToneBox tone={tone} />);
+
     return (
       <Box
         gridArea="main"
@@ -31,7 +34,8 @@ export default class MainPage extends React.Component {
         fill
         background={{
           image: "url(/images/07.png)",
-          size: "contain"
+          size: "contain",
+          repeat: "space"
         }}
       >
         <Box
@@ -57,6 +61,17 @@ export default class MainPage extends React.Component {
               this.filterNotes(option.name);
             }}
           />
+        </Box>
+        <Heading level="6" alignSelf="center" color="brand" margin="none">
+          This Month in Feelings
+        </Heading>
+        <Box
+          direction="row"
+          align="center"
+          alignContent="center"
+          justify="center"
+        >
+          {monthTone}
         </Box>
         <NoteContainer
           notes={

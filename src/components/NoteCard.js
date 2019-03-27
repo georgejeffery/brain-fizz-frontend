@@ -9,8 +9,18 @@ export default class Note extends React.Component {
   isAppointment() {
     if (this.props.note.tags.map(tag => tag.name).includes("Appointment")) {
       return (
-        <Heading level="6">Appointment date: {this.props.note.date}</Heading>
+        <Heading level="6" color="grey">
+          Due date: {new Date(this.props.note.date).toLocaleDateString("en-GB")}
+        </Heading>
       );
+    } else {
+      if (this.props.note.tags.length > 0) {
+        return (
+          <Heading level="6" color="grey">
+            {this.props.note.tags[0].name}
+          </Heading>
+        );
+      }
     }
   }
 
@@ -73,6 +83,7 @@ export default class Note extends React.Component {
       >
         <Heading level="4">{this.props.note.content}</Heading>
         {this.isAppointment()}
+
         <FormTrash
           color="white"
           onClick={() => {
